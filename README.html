@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Processing Web (スタンドアローン版) 利用ガイド</title>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --text: #1e293b;
+      --text-muted: #64748b;
+      --accent: #3b82f6;
+      --accent-hover: #2563eb;
+      --success: #10b981;
+      --border: #e2e8f0;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      margin: 0;
+      padding: 40px 20px;
+    }
+    .container {
+      max-width: 760px;
+      margin: 0 auto;
+      background: var(--card-bg);
+      border-radius: 12px;
+      padding: 36px 40px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+      border: 1px solid var(--border);
+    }
+    h1 {
+      font-size: 24px;
+      color: #0f172a;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 0;
+      padding-bottom: 16px;
+      border-bottom: 2px solid var(--border);
+    }
+    h2 {
+      font-size: 18px;
+      color: #1e293b;
+      margin-top: 28px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .badge {
+      font-size: 12px;
+      background: #e0f2fe;
+      color: #0369a1;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-weight: 600;
+    }
+    .step-box {
+      background: #f1f5f9;
+      border-left: 4px solid var(--accent);
+      padding: 14px 18px;
+      border-radius: 0 8px 8px 0;
+      margin-bottom: 16px;
+    }
+    .step-num {
+      font-weight: 700;
+      color: var(--accent);
+      font-size: 15px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 14px 0;
+    }
+    th, td {
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      text-align: left;
+      font-size: 14px;
+    }
+    th {
+      background-color: #f8fafc;
+      color: #475569;
+    }
+    code {
+      background: #e2e8f0;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: Consolas, Monaco, monospace;
+      font-size: 13px;
+      color: #0f172a;
+    }
+    .launch-btn {
+      display: inline-block;
+      background: var(--accent);
+      color: #ffffff;
+      padding: 12px 24px;
+      font-size: 16px;
+      font-weight: 600;
+      text-decoration: none;
+      border-radius: 8px;
+      transition: background 0.15s ease;
+      margin: 20px 0;
+    }
+    .launch-btn:hover {
+      background: var(--accent-hover);
+    }
+    .note {
+      background: #fffbeb;
+      border-left: 4px solid #f59e0b;
+      padding: 12px 16px;
+      border-radius: 0 8px 8px 0;
+      font-size: 13px;
+      color: #78350f;
+      margin: 16px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎨 Processing Web (スタンドアローン版) <span class="badge">自宅自習用</span></h1>
+    <p>この環境は、インターネット接続やソフトウェアのインストールなしに、WebブラウザだけでProcessing (p5.js) のプログラミング・実行・保存ができる学習用ツールです。</p>
+
+    <div style="text-align: center;">
+      <a href="index.html" class="launch-btn">🚀 エディタを起動する (index.html を開く)</a>
+    </div>
+
+    <h2>🚀 はじめかた</h2>
+    <div class="step-box">
+      <div class="step-num">Step 1: 起動</div>
+      <div>フォルダ内の <strong><code>index.html</code></strong> をダブルクリックして開きます（Google Chrome, Microsoft Edge, Safari などに対応）。</div>
+    </div>
+    <div class="step-box">
+      <div class="step-num">Step 2: コード作成 &amp; 実行</div>
+      <div>左側の黒いエディタにコードを書き、上部の <strong>「▶ 実行」</strong> ボタン（または <code>Ctrl + Enter</code>）を押すと右側の画面に描画されます。</div>
+    </div>
+    <div class="step-box">
+      <div class="step-num">Step 3: 保存（課題の提出）</div>
+      <div>上部の <strong>「💾 保存」</strong> ボタン（または <code>Ctrl + S</code>）を押すと、<code>.pde</code> ファイルとしてダウンロードされます。このファイルを課題として提出できます。</div>
+    </div>
+
+    <h2>⌨️ 便利なショートカットキー</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>操作</th>
+          <th>Windows</th>
+          <th>macOS</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>コードの実行</strong></td>
+          <td><code>Ctrl + Enter</code></td>
+          <td><code>Cmd (⌘) + Enter</code></td>
+        </tr>
+        <tr>
+          <td><strong>ファイルの保存 (.pde)</strong></td>
+          <td><code>Ctrl + S</code></td>
+          <td><code>Cmd (⌘) + S</code></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>📂 保存したプログラムを再開するには</h2>
+    <ul>
+      <li>上部の <strong>「📂 開く」</strong> ボタンを押して以前保存した <code>.pde</code> ファイルを選択してください。</li>
+      <li>または、パソコン上の <code>.pde</code> ファイルを <strong>エディタ画面に直接ドラッグ＆ドロップ</strong> しても開くことができます。</li>
+    </ul>
+
+    <div class="note">
+      <strong>⚠️ 安心機能（自動下書き保存）</strong><br>
+      うっかり保存する前にブラウザを閉じてしまっても、次回 <code>index.html</code> を開いたときに直前のコードが自動復元されます。ただし提出用ファイルが必要な場合は、必ず「💾 保存」を押して <code>.pde</code> ファイルをダウンロードしてください。
+    </div>
+
+    <h2>💡 よくある質問</h2>
+    <p><strong>Q. 学校の演習室と同じコードが動きますか？</strong><br>
+    A. はい。<code>void setup()</code> や <code>size(400, 400);</code> などの構文は自動的に変換されてそのまま動きます。</p>
+
+    <p><strong>Q. 無限ループで画面が固まってしまったら？</strong><br>
+    A. 上部の <strong>「■ 停止」</strong> ボタンを押せば、強制的に実行を中断してリセットできます。</p>
+  </div>
+</body>
+</html>

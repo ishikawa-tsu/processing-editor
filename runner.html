@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>p5.js Sandbox Container</title>
+  <meta name="color-scheme" content="light">
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #ffffff;
+      color-scheme: light;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    canvas {
+      display: block;
+      background-color: #ffffff;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
+      border: 1px solid #e0e0e0;
+    }
+  </style>
+
+  <!-- Load local p5.js library -->
+  <script src="lib/p5.js"></script>
+</head>
+<body>
+  <div id="canvas-container"></div>
+
+  <script>
+    var executionFailed = false;
+
+    // Intercept console.log, warn, error
+    var origLog = console.log;
+    var origWarn = console.warn;
+    var origError = console.error;
+
+    function sendLog(level, args) {
+      var msgs = Array.prototype.slice.call(args).map(function(arg) {
+        if (typeof arg === 'object') {
+          try { return JSON.stringify(arg); } catch(e) { return String(arg); }
+        }
+        return String(arg);
+      });
+      window.parent.postMessage({
+        type: 'CONSOLE_LOG',
+        level: level,
+        message: msgs.join(' ')
+      }, '*');
+    }
+
+    console.log = function() {
+      sendLog('info', arguments);
+      origLog.apply(console, arguments);
+    };
+    console.warn = function() {
+      sendLog('warn', arguments);
+      origWarn.apply(console, arguments);
+    };
+    console.error = function() {
+      sendLog('error', arguments);
+      origError.apply(console, arguments);
+    };
+
+    // Global print / println function in Processing/p5.js style
+    window.print = function() {
+      console.log.apply(console, arguments);
+    };
+    window.println = function() {
+      console.log.apply(console, arguments);
+    };
+
+    // Global error handler
+    window.onerror = function(msg, url, lineNo, columnNo, error) {
+      executionFailed = true;
+      var errorMsg = msg;
+      if (error && error.message) {
+        errorMsg = error.message;
+      }
+      window.parent.postMessage({
+        type: 'RUNTIME_ERROR',
+        message: errorMsg,
+        line: lineNo,
+        column: columnNo
+      }, '*');
+      window.parent.postMessage({
+        type: 'EXECUTION_COMPLETE',
+        success: false,
+        error: errorMsg
+      }, '*');
+      return false;
+    };
+
+    window.addEventListener('unhandledrejection', function(event) {
+      executionFailed = true;
+      var reason = event.reason ? (event.reason.message || event.reason) : 'Unknown Promise Rejection';
+      window.parent.postMessage({
+        type: 'RUNTIME_ERROR',
+        message: '非同期エラー: ' + reason,
+        line: null
+      }, '*');
+      window.parent.postMessage({
+        type: 'EXECUTION_COMPLETE',
+        success: false,
+        error: String(reason)
+      }, '*');
+    });
+
+    // Prohibit media and external asset loading per specification
+    function installMediaProhibitionGuards() {
+      var prohibitedMethods = [
+        'loadImage',
+        'loadSound',
+        'loadJSON',
+        'loadStrings',
+        'loadTable',
+        'loadXML',
+        'loadFont',
+        'loadModel',
+        'loadShader',
+        'createAudio',
+        'createVideo',
+        'createCapture'
+      ];
+
+      prohibitedMethods.forEach(function(fnName) {
+        window[fnName] = function() {
+          var warnMsg = '【制限事項】本環境では外部メディア読み込み (' + fnName + ') の使用は禁止されています。図形描画やアニメーションを使用してください。';
+          console.error(warnMsg);
+          throw new Error(warnMsg);
+        };
+      });
+    }
+
+    // Processing (Java style) syntax compatibility preprocessor
+    function preprocessProcessingCode(code) {
+      var converted = code;
+
+      // 1. Java function definitions: void setup(), int calc(), float getVal() -> function setup()
+      converted = converted.replace(/\b(?:void|int|float|boolean|String|char|double|long)\s+([a-zA-Z0-9_$]+)\s*\(/g, 'function $1(');
+
+      // 3. For loop typed declarations: for (int i = 0; ...) -> for (let i = 0; ...)
+      converted = converted.replace(/for\s*\(\s*(?:int|float|double|long)\s+/g, 'for (let ');
+
+      // 4. Variable declarations: int a, b; / float x = 1.0; -> let a, b;
+      converted = converted.replace(/(^|[;\{\}\n\r])\s*(?:int|float|boolean|String|char|double|long)\s+([a-zA-Z_$])/gm, '$1let $2');
+
+      // 5. Final keyword: final int X = 10; -> const X = 10;
+      converted = converted.replace(/\bfinal\s+(?:let\s+|[a-zA-Z0-9_$]+\s+)?/g, 'const ');
+
+      return converted;
+    }
+
+    // Processing Java-compatible size(w, h) alias support
+    window.size = function(w, h, renderer) {
+      if (typeof createCanvas === 'function') {
+        return createCanvas(w, h, renderer);
+      }
+    };
+
+    // Listen for code execution request from parent window
+    window.addEventListener('message', function(e) {
+      if (e.source !== window.parent) return;
+      if (!e.data || e.data.type !== 'EXECUTE_CODE') return;
+
+      executionFailed = false;
+      var rawUserCode = e.data.code || '';
+
+      if (typeof p5 === 'undefined') {
+        var notFoundMsg = '【エラー】p5.js ライブラリが読み込まれていません。src/frontend/ または src/frontend/lib/ に p5.js を配置してください。';
+        console.error(notFoundMsg);
+        window.parent.postMessage({
+          type: 'CONSOLE_LOG',
+          level: 'error',
+          message: notFoundMsg
+        }, '*');
+        window.parent.postMessage({
+          type: 'EXECUTION_COMPLETE',
+          success: false,
+          error: 'p5.js library not loaded'
+        }, '*');
+        return;
+      }
+
+      installMediaProhibitionGuards();
+
+      try {
+        // Preprocess Processing (Java) style code into compatible JavaScript
+        var convertedCode = preprocessProcessingCode(rawUserCode);
+
+        // Static sketch detection: If user did not declare setup() or draw(), wrap into setup()
+        // so that beginners can write one-liners like `line(0,0,100,100);` directly.
+        var hasSetup = /(?:function\s+setup\b|window\.setup\b|\bsetup\s*=\s*(?:function|\())/.test(convertedCode);
+        var hasDraw = /(?:function\s+draw\b|window\.draw\b|\bdraw\s*=\s*(?:function|\())/.test(convertedCode);
+
+        var finalCode = convertedCode;
+        if (!hasSetup && !hasDraw) {
+          var hasCanvas = /(?:createCanvas|size)\s*\(/.test(convertedCode);
+          var canvasPrefix = hasCanvas ? '' : 'createCanvas(400, 400);\n';
+          finalCode = 'function setup() {\n' + canvasPrefix + convertedCode + '\n  noLoop();\n}';
+        } else if (hasSetup && !/(?:createCanvas|size)\s*\(/.test(convertedCode)) {
+          finalCode = finalCode.replace(/(function\s+setup\s*\([^)]*\)\s*\{)/, '$1\n  createCanvas(400, 400);');
+        }
+
+        // Execute code in global sandbox scope
+        var scriptEl = document.createElement('script');
+        scriptEl.textContent = finalCode;
+        document.body.appendChild(scriptEl);
+
+        // If execution raised a syntax error or runtime error, don't trigger p5
+        if (executionFailed) return;
+
+        // Explicitly instantiate p5 global mode
+        if (typeof p5 !== 'undefined') {
+          new p5();
+        }
+
+        // Notify parent that initial execution succeeded
+        if (!executionFailed) {
+          window.parent.postMessage({
+            type: 'EXECUTION_COMPLETE',
+            success: true
+          }, '*');
+        }
+      } catch (err) {
+        executionFailed = true;
+        var lineNum = null;
+        if (err.stack) {
+          var match = err.stack.match(/<anonymous>:(\d+):(\d+)/);
+          if (match) lineNum = parseInt(match[1], 10);
+        }
+        window.parent.postMessage({
+          type: 'RUNTIME_ERROR',
+          message: err.message,
+          line: lineNum
+        }, '*');
+        window.parent.postMessage({
+          type: 'EXECUTION_COMPLETE',
+          success: false,
+          error: err.message
+        }, '*');
+      }
+    });
+  </script>
+</body>
+</html>

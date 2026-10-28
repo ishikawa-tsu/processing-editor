@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Processing (p5.js) Web Editor - Standalone</title>
+  <link rel="stylesheet" href="lib/codemirror/codemirror.css">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- Top Navigation Toolbar -->
+  <header class="toolbar">
+    <div class="toolbar-left">
+      <div class="brand-title">
+        <span>🎨</span> Processing Web
+      </div>
+      <div class="file-info" title="ファイル名をクリックして変更できます">
+        <span>📄</span>
+        <input type="text" id="file-name-input" class="file-name-input" value="sketch_01.pde" spellcheck="false" title="ファイル名（クリックして編集）">
+        <span id="dirty-indicator" class="dirty-indicator" title="未保存の変更があります">*</span>
+      </div>
+      <button id="btn-new" class="btn" title="新規スケッチ作成">＋ 新規</button>
+      <button id="btn-save" class="btn btn-primary" title="保存（.pde をダウンロード / Ctrl+S または Cmd+S）">💾 保存</button>
+      <button id="btn-open" class="btn" title="プログラムファイルを読み込み（.pde, .js, .txt）">📂 開く</button>
+      <input type="file" id="file-upload-input" accept=".pde,.js,.txt,text/plain" style="display: none;">
+    </div>
+
+    <div class="toolbar-center">
+      <button id="btn-run" class="btn btn-run" title="コードを実行（Ctrl+Enter または Cmd+Enter）">▶ 実行</button>
+      <button id="btn-stop" class="btn btn-stop" title="実行を停止（無限ループ時も強制リセット）">■ 停止</button>
+    </div>
+
+    <div class="toolbar-right">
+      <button id="btn-help" class="btn btn-sm" title="操作方法・ショートカットキーの確認">❓ 使い方</button>
+    </div>
+  </header>
+
+  <!-- Main Workspace (Editor + Live Canvas & Console) -->
+  <main class="workspace">
+    <!-- Left: Code Editor Pane -->
+    <section class="editor-pane" id="drop-zone">
+      <div class="editor-subbar">
+        <span style="font-size: 12px; color: var(--text-muted);">Editor (Processing / p5.js)</span>
+        <span style="font-size: 11px; color: var(--text-muted);">Ctrl+S (Cmd+S) で保存 / ファイルを直接D&amp;D可能</span>
+      </div>
+      <div id="editor-container" class="editor-container"></div>
+      <!-- Drag & Drop Overlay Indicator -->
+      <div id="drag-overlay" class="drag-overlay">
+        <div class="drag-overlay-content">
+          <span>📥 ここにファイルをドロップして読み込み</span>
+          <small>(.pde, .js, .txt 対応)</small>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right: Live Canvas and Console Output -->
+    <section class="preview-pane">
+      <!-- Live Canvas Area -->
+      <div id="canvas-container" class="canvas-area">
+        <!-- Sandboxed iframe will be mounted and cleanly destroyed here via srcdoc -->
+      </div>
+
+      <!-- Execution Console Pane -->
+      <div class="console-pane">
+        <div class="console-header">
+          <span>Console &amp; Error Output</span>
+          <button id="btn-clear-console" class="btn btn-sm" onclick="document.getElementById('console-body').innerHTML='';" style="padding: 1px 6px;">クリア</button>
+        </div>
+        <div id="console-body" class="console-body">
+          <div class="console-line system">システム準備完了。'▶ 実行' を押すと描画が開始されます。</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Modal: Data Loss / Unsaved Confirmation -->
+  <div id="confirm-modal" class="modal-backdrop">
+    <div class="modal-window" style="max-width: 440px;">
+      <div class="modal-header">
+        <h3 style="color: var(--accent-orange);">⚠️ 確認</h3>
+        <button class="modal-close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p id="confirm-message" style="line-height: 1.5; font-size: 14px;"></p>
+      </div>
+      <div class="modal-footer">
+        <button id="btn-confirm-cancel" class="btn">キャンセル</button>
+        <button id="btn-confirm-ok" class="btn btn-stop" style="background-color: #d32f2f;">破棄して進む</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Help & Quick Guide -->
+  <div id="help-modal" class="modal-backdrop">
+    <div class="modal-window" style="max-width: 560px;">
+      <div class="modal-header">
+        <h3>ℹ️ 使い方ガイド &amp; ショートカット</h3>
+        <button class="modal-close-btn">&times;</button>
+      </div>
+      <div class="modal-body" style="font-size: 13px; line-height: 1.6; color: var(--text-color);">
+        <p style="margin-bottom: 12px;"><strong>🎨 Processing Web (スタンドアローン版)</strong> は、サーバーやインターネット接続なしで動く学習用エディタです。</p>
+        
+        <h4 style="margin: 12px 0 6px; color: var(--accent-blue);">⌨️ ショートカットキー</h4>
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 12px;">
+          <tr style="border-bottom: 1px solid var(--border-color);"><td style="padding: 4px;">実行</td><td><code>Ctrl + Enter</code> (Mac: <code>Cmd + Enter</code>)</td></tr>
+          <tr style="border-bottom: 1px solid var(--border-color);"><td style="padding: 4px;">保存 (.pde)</td><td><code>Ctrl + S</code> (Mac: <code>Cmd + S</code>)</td></tr>
+        </table>
+
+        <h4 style="margin: 12px 0 6px; color: var(--accent-blue);">📂 ファイルの保存と再開</h4>
+        <ul style="padding-left: 20px; margin-bottom: 12px;">
+          <li><strong>保存</strong>: 「💾 保存」ボタンを押すと、PCのダウンロードフォルダに <code>.pde</code> 形式で保存されます。</li>
+          <li><strong>読み込み</strong>: 「📂 開く」ボタンでファイルを選択するか、<strong>エディタ領域にファイルをドラッグ＆ドロップ</strong>してください。</li>
+          <li><strong>自動復元</strong>: ブラウザを誤って閉じても、直前に編集していたコードは自動で復元されます。</li>
+        </ul>
+
+        <h4 style="margin: 12px 0 6px; color: var(--accent-blue);">💡 注意事項</h4>
+        <ul style="padding-left: 20px;">
+          <li><code>void setup()</code>, <code>size(400, 400);</code> などの Java 風構文は自動で変換されて実行されます。</li>
+          <li>演習室システムと同じく、画像読み込み（<code>loadImage</code> 等）は使用できません。</li>
+        </ul>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-modal-close btn-primary">閉じる</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Scripts: No server API or logger, completely local -->
+  <script src="lib/codemirror/codemirror.js"></script>
+  <script src="lib/codemirror/javascript.js"></script>
+  <script src="js/editor.js"></script>
+  <script src="js/runner.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
